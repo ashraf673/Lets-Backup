@@ -1,0 +1,1 @@
+Stage 1: connect this project repository to Codemagic and run android-stage1-debug. The build produces an unsigned debug APK artifact. No signing key is required for Stage 1.
