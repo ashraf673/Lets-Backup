@@ -9,141 +9,262 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center_horizontal">
+        android:padding="20dp">
 
-        <!-- Header -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="40dp"
-            android:text="LET'S BACKUP"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:textColor="@color/lb_primary"
-            android:letterSpacing="0.05" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Portable  •  Verified  •  Lossless"
-            android:textSize="14sp"
-            android:textColor="@color/lb_text_secondary" />
-
-        <!-- Spacer -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
-
-        <!-- BACKUP Card -->
+        <!-- HOME PANEL -->
         <LinearLayout
-            android:id="@+id/backupCard"
+            android:id="@+id/homePanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@drawable/card_backup"
-            android:padding="28dp"
-            android:elevation="4dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?android:attr/selectableItemBackground">
+            android:gravity="center_horizontal">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📦  BACKUP"
-                android:textSize="22sp"
+                android:layout_marginTop="32dp"
+                android:text="LET'S BACKUP"
+                android:textSize="30sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF" />
+                android:textColor="@color/lb_primary"
+                android:letterSpacing="0.04" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Create a verified .lb.zip archive of your photos &amp; videos"
-                android:textSize="14sp"
-                android:textColor="#E3F2FD" />
+                android:text="Portable  •  Verified  •  Lossless"
+                android:textSize="13sp"
+                android:textColor="@color/lb_text_secondary" />
+
+            <View android:layout_width="match_parent" android:layout_height="36dp" />
+
+            <LinearLayout
+                android:id="@+id/backupCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_backup"
+                android:padding="24dp"
+                android:elevation="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📦  BACKUP"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Create a verified .lb.zip of your photos &amp; videos"
+                    android:textSize="13sp"
+                    android:textColor="#E3F2FD" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+            <LinearLayout
+                android:id="@+id/restoreCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_restore"
+                android:padding="24dp"
+                android:elevation="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="♻️  RESTORE"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Restore from a Let's Backup archive (merge safe)"
+                    android:textSize="13sp"
+                    android:textColor="#E0F2F1" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Spacer -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="20dp" />
-
-        <!-- RESTORE Card -->
+        <!-- SELECTION PANEL -->
         <LinearLayout
-            android:id="@+id/restoreCard"
+            android:id="@+id/selectionPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@drawable/card_restore"
-            android:padding="28dp"
-            android:elevation="4dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?android:attr/selectableItemBackground">
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="♻️  RESTORE"
-                android:textSize="22sp"
+                android:text="Select what to backup"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF" />
+                android:textColor="@color/lb_text_primary" />
+
+            <View android:layout_width="match_parent" android:layout_height="16dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Restore from a Let's Backup archive (merge safe)"
-                android:textSize="14sp"
-                android:textColor="#E0F2F1" />
+                android:text="Media type"
+                android:textStyle="bold"
+                android:textColor="@color/lb_text_secondary" />
+            <RadioGroup
+                android:id="@+id/mediaTypeGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                <RadioButton android:id="@+id/radioBoth" android:text="Photos + Videos" android:checked="true" />
+                <RadioButton android:id="@+id/radioPhotos" android:text="Photos" android:layout_marginStart="12dp" />
+                <RadioButton android:id="@+id/radioVideos" android:text="Videos" android:layout_marginStart="12dp" />
+            </RadioGroup>
+
+            <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Date range (optional)"
+                android:textStyle="bold"
+                android:textColor="@color/lb_text_secondary" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp">
+                <Button
+                    android:id="@+id/fromDateBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="From: Any"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+                <Button
+                    android:id="@+id/toDateBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="To: Any"
+                    style="@style/Widget.Material3.Button.OutlinedButton" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Albums / Folders"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_secondary" />
+                <Button
+                    android:id="@+id/selectAllBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="All"
+                    style="@style/Widget.Material3.Button.TextButton" />
+                <Button
+                    android:id="@+id/clearAllBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clear"
+                    style="@style/Widget.Material3.Button.TextButton" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/albumListContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="4dp" />
+
+            <View android:layout_width="match_parent" android:layout_height="20dp" />
+
+            <TextView
+                android:id="@+id/sizeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Selected: 0 files  •  0 B"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/lb_primary"
+                android:padding="12dp"
+                android:background="@drawable/card_status" />
+
+            <View android:layout_width="match_parent" android:layout_height="20dp" />
+
+            <Button
+                android:id="@+id/startBackupBtn"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="START BACKUP"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/backToHomeBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="← Back"
+                style="@style/Widget.Material3.Button.TextButton" />
         </LinearLayout>
 
-        <!-- Spacer -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="36dp" />
+        <View android:layout_width="match_parent" android:layout_height="24dp" />
 
-        <!-- Status Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/card_status"
-            android:padding="20dp"
+            android:padding="16dp"
             android:elevation="2dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="STATUS"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/lb_text_secondary"
                 android:letterSpacing="0.1" />
-
             <TextView
                 android:id="@+id/statusText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:text="Ready"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textColor="@color/lb_text_primary"
-                android:lineSpacingExtra="4dp" />
+                android:lineSpacingExtra="3dp" />
         </LinearLayout>
 
-        <!-- Footer -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="40dp"
-            android:layout_marginBottom="20dp"
-            android:text="v0.4  •  Prototype"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:text="v0.5  •  Selection ready"
             android:textSize="12sp"
             android:textColor="@color/lb_text_secondary" />
-
     </LinearLayout>
 </ScrollView>
