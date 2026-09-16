@@ -2,22 +2,23 @@
 
 **Portable • Verified • Lossless** photo & video backup for Android.
 
-## Current Status (v0.4)
+## Current Version: 0.5
 
+### Working features
 - Modern Material Design home screen
-- MediaStore scanning (photos + videos)
+- Full MediaStore scanning (photos + videos)
+- Album / folder grouping and selection
+- Select All / Clear
+- Date range filter (From / To)
+- Media type filter (Photos / Videos / Both)
+- Accurate live size calculation
 - Permission handling (Android 13+)
-- Codemagic-ready build configuration
 
-## Next Steps
-
-- Album / folder selection
-- Date range filtering
-- Size calculation
+### Next (coming soon)
 - Destination selection (SAF)
-- .lb.zip archive creation with SHA-256 verification
-- Full restore engine
+- .lb.zip archive creation with SHA-256 + manifest
+- Full verification
+- Restore engine with merge + Replace/Skip
 
 ## Build
-
-Use the Codemagic workflow `android-stage1-debug` to produce a debug APK.
+Connect this repo to Codemagic and run the `android-stage1-debug` workflow.
