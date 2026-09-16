@@ -11,10 +11,11 @@ workflows:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
       - name: Install Gradle and build
         script: |
+          set -e
           curl -L --fail -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
           unzip -q /tmp/gradle.zip -d /tmp/gradle
           export PATH="/tmp/gradle/gradle-8.11.1/bin:$PATH"
           gradle --version
-          gradle assembleDebug
+          gradle assembleDebug --stacktrace
     artifacts:
       - app/build/outputs/apk/debug/*.apk
