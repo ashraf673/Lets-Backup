@@ -11,8 +11,8 @@ android {
         applicationId 'com.letsbackup.app'
         minSdk 26
         targetSdk 35
-        versionCode 9
-        versionName '0.9-build3'
+        versionCode 10
+        versionName '1.0-build3'
     }
 
     compileOptions {

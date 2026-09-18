@@ -2,29 +2,35 @@
 
 **Portable • Verified • Lossless** photo & video backup for Android.
 
-## Version 0.8 – Build 2 (Reliability)
+## Version 1.0 – Build 3
 
-### What works now (Build 1 + Build 2)
+### Completed Features
 
-**Backup Engine**
-- Media scanning + Album / Date / Type selection
-- Choose destination folder (Internal / SD / USB)
-- Create real `.lb.zip` (lossless)
-- `manifest.json` + `checksums.sha256`
+**Build 1 – Backup Engine**
+- Media scan, album/date/type selection
+- Destination folder (SAF)
+- Real `.lb.zip` creation (lossless)
+- manifest.json + checksums.sha256
 - Progress display
 
-**Reliability (Build 2)**
-- Detects incomplete backup on next launch
-- Option to Delete incomplete state or keep it
-- Keeps screen on during backup
-- Partial wake lock so backup is less likely to be killed
-- Progress is saved so the app knows how far it got
+**Build 2 – Reliability**
+- Incomplete backup detection
+- Wake lock + keep screen on
 
-### How to test incomplete backup detection
-1. Start a backup with many files
-2. Force close the app in the middle
-3. Reopen the app → you should see the "Incomplete Backup Found" dialog
+**Build 3 – Restore + Bug Report**
+- 🐛 Bug Report button (top right) – shows all internal logs
+- Detect valid Let's Backup archives
+- Restore Everything (automatic Replace style)
+- Progress during restore
+- Basic MediaStore notification
 
-### Still coming
-- Build 3: Full Restore engine
-- Build 4: Final UI polish
+### How to test Restore
+1. Create a backup first
+2. Tap RESTORE → select the `.lb.zip` file
+3. Confirm → files are restored to app folder
+
+### Still upcoming (Build 4)
+- Final UI redesign (Apple / One UI style)
+- New LB + leaf logo
+- Ashraf Creation watermark (normal + shining during progress)
+- Dark / Light mode (system + manual)
