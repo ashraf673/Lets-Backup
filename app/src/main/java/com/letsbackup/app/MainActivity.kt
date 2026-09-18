@@ -5,12 +5,15 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.letsbackup.app.archive.ArchiveWriter
 import com.letsbackup.app.media.MediaScanner
 import com.letsbackup.app.model.BackupSelection
 import com.letsbackup.app.model.MediaItem
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fromDateBtn: Button
     private lateinit var toDateBtn: Button
     private lateinit var mediaTypeGroup: RadioGroup
+    private lateinit var startBackupBtn: Button
 
     private var allItems: List<MediaItem> = emptyList()
     private var albums: Map<String, List<MediaItem>> = emptyMap()
@@ -35,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private var toDate: Long? = null
     private var includePhotos = true
     private var includeVideos = true
+    private var isBackingUp = false
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
@@ -56,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         fromDateBtn = findViewById(R.id.fromDateBtn)
         toDateBtn = findViewById(R.id.toDateBtn)
         mediaTypeGroup = findViewById(R.id.mediaTypeGroup)
+        startBackupBtn = findViewById(R.id.startBackupBtn)
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
             if (hasMediaAccess()) startBackupFlow() else requestMediaAccess()
@@ -91,22 +97,27 @@ class MainActivity : AppCompatActivity() {
             updateSize()
         }
 
-        findViewById<Button>(R.id.startBackupBtn).setOnClickListener {
+        startBackupBtn.setOnClickListener {
+            if (isBackingUp) return@setOnClickListener
             val selection = buildSelection()
             if (selection.totalFiles == 0) {
                 statusText.text = "No files selected. Please choose albums or change filters."
                 return@setOnClickListener
             }
-            statusText.text = "Ready to backup:\n\n" +
-                    "Files: ${selection.totalFiles}\n" +
-                    "Photos: ${selection.photoCount}\n" +
-                    "Videos: ${selection.videoCount}\n" +
-                    "Size: ${formatBytes(selection.totalBytes)}\n\n" +
-                    "Full .lb.zip engine will be connected next."
-            Toast.makeText(this, "Selection ready – archive engine coming", Toast.LENGTH_LONG).show()
+
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            }
+            startActivityForResult(intent, PICK_DESTINATION_REQUEST)
         }
 
         findViewById<Button>(R.id.backToHomeBtn).setOnClickListener {
+            if (isBackingUp) {
+                Toast.makeText(this, "Backup is running. Please wait.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             selectionPanel.visibility = View.GONE
             homePanel.visibility = View.VISIBLE
             statusText.text = "Ready"
@@ -128,6 +139,59 @@ class MainActivity : AppCompatActivity() {
                 buildAlbumCheckboxes()
                 updateSize()
                 statusText.text = "Scan complete. ${allItems.size} files found.\nSelect albums and date range, then start backup."
+            }
+        }.start()
+    }
+
+    private fun startRealBackup(destinationUri: Uri) {
+        val selection = buildSelection()
+        if (selection.totalFiles == 0) return
+
+        isBackingUp = true
+        startBackupBtn.isEnabled = false
+        startBackupBtn.text = "BACKING UP…"
+        statusText.text = "Starting backup…"
+
+        try {
+            contentResolver.takePersistableUriPermission(
+                destinationUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        } catch (_: Exception) { }
+
+        Thread {
+            val writer = ArchiveWriter(
+                context = this,
+                selection = selection,
+                destinationTreeUri = destinationUri
+            ) { current, total, bytesCopied, totalBytes, stage ->
+                runOnUiThread {
+                    val percent = if (total > 0) (current * 100 / total) else 0
+                    statusText.text = "$stage\n\nFile: $current / $total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
+                }
+            }
+
+            val result = writer.createArchive()
+
+            runOnUiThread {
+                isBackingUp = false
+                startBackupBtn.isEnabled = true
+                startBackupBtn.text = "START BACKUP"
+
+                when (result) {
+                    is ArchiveWriter.Result.Success -> {
+                        statusText.text = "✅ Backup completed and saved!\n\nFile: ${result.fileName}\n\nYou can safely disconnect storage."
+                        AlertDialog.Builder(this)
+                            .setTitle("Backup Completed")
+                            .setMessage("Backup saved as:\n${result.fileName}\n\nLocation: selected folder")
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
+                    is ArchiveWriter.Result.Error -> {
+                        statusText.text = "❌ Backup failed:\n${result.message}"
+                        Toast.makeText(this, "Backup failed: ${result.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }.start()
     }
@@ -235,10 +299,16 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Prototype")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_BACKUP_REQUEST && resultCode == Activity.RESULT_OK) {
-            statusText.text = if (data?.data != null)
-                "Backup file selected.\nFull restore engine will be connected next."
-            else "No backup selected."
+        if (resultCode != Activity.RESULT_OK || data?.data == null) return
+
+        when (requestCode) {
+            PICK_DESTINATION_REQUEST -> {
+                val uri = data.data!!
+                startRealBackup(uri)
+            }
+            PICK_BACKUP_REQUEST -> {
+                statusText.text = "Backup file selected.\nFull restore engine will come in Build 3."
+            }
         }
     }
 }
