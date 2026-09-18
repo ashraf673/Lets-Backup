@@ -7,13 +7,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.View
+import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.letsbackup.app.archive.ArchiveWriter
+import com.letsbackup.app.backup.BackupState
 import com.letsbackup.app.media.MediaScanner
 import com.letsbackup.app.model.BackupSelection
 import com.letsbackup.app.model.MediaItem
@@ -40,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var includePhotos = true
     private var includeVideos = true
     private var isBackingUp = false
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
@@ -62,6 +66,8 @@ class MainActivity : AppCompatActivity() {
         toDateBtn = findViewById(R.id.toDateBtn)
         mediaTypeGroup = findViewById(R.id.mediaTypeGroup)
         startBackupBtn = findViewById(R.id.startBackupBtn)
+
+        checkIncompleteBackup()
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
             if (hasMediaAccess()) startBackupFlow() else requestMediaAccess()
@@ -124,6 +130,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkIncompleteBackup() {
+        if (!BackupState.isInProgress(this)) return
+
+        val fileName = BackupState.getFileName(this) ?: return
+        val completed = BackupState.getCompletedFiles(this)
+        val total = BackupState.getTotalFiles(this)
+
+        AlertDialog.Builder(this)
+            .setTitle("Incomplete Backup Found")
+            .setMessage("A previous backup was interrupted.\n\nFile: $fileName\nProgress: $completed / $total files\n\nWhat would you like to do?")
+            .setPositiveButton("Delete Incomplete") { _, _ ->
+                BackupState.markFinished(this)
+                statusText.text = "Incomplete backup cleared."
+                Toast.makeText(this, "Incomplete backup state cleared", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Keep & Continue Later") { _, _ ->
+                statusText.text = "Incomplete backup kept.\nYou can start a new backup when ready."
+            }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun startBackupFlow() {
         statusText.text = "Scanning photos and videos…"
         homePanel.visibility = View.GONE
@@ -152,6 +180,12 @@ class MainActivity : AppCompatActivity() {
         startBackupBtn.text = "BACKING UP…"
         statusText.text = "Starting backup…"
 
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LetsBackup::BackupLock")
+        wakeLock?.acquire(60 * 60 * 1000L)
+
         try {
             contentResolver.takePersistableUriPermission(
                 destinationUri,
@@ -159,12 +193,16 @@ class MainActivity : AppCompatActivity() {
             )
         } catch (_: Exception) { }
 
+        val fileName = "LetsBackup_${SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(Date())}.lb.zip"
+        BackupState.markStarted(this, destinationUri, fileName, selection.totalFiles)
+
         Thread {
             val writer = ArchiveWriter(
                 context = this,
                 selection = selection,
                 destinationTreeUri = destinationUri
             ) { current, total, bytesCopied, totalBytes, stage ->
+                BackupState.updateProgress(this, current)
                 runOnUiThread {
                     val percent = if (total > 0) (current * 100 / total) else 0
                     statusText.text = "$stage\n\nFile: $current / $total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
@@ -177,18 +215,22 @@ class MainActivity : AppCompatActivity() {
                 isBackingUp = false
                 startBackupBtn.isEnabled = true
                 startBackupBtn.text = "START BACKUP"
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                wakeLock?.release()
+                wakeLock = null
 
                 when (result) {
                     is ArchiveWriter.Result.Success -> {
-                        statusText.text = "✅ Backup completed and saved!\n\nFile: ${result.fileName}\n\nYou can safely disconnect storage."
+                        BackupState.markFinished(this)
+                        statusText.text = "✅ Backup completed and verified!\n\nFile: ${result.fileName}\n\nYou can safely disconnect storage."
                         AlertDialog.Builder(this)
                             .setTitle("Backup Completed")
-                            .setMessage("Backup saved as:\n${result.fileName}\n\nLocation: selected folder")
+                            .setMessage("Backup saved successfully as:\n\n${result.fileName}\n\nYou can now safely remove the storage if used.")
                             .setPositiveButton("OK", null)
                             .show()
                     }
                     is ArchiveWriter.Result.Error -> {
-                        statusText.text = "❌ Backup failed:\n${result.message}"
+                        statusText.text = "❌ Backup failed or interrupted:\n${result.message}\n\nYou can try again or clear the incomplete state later."
                         Toast.makeText(this, "Backup failed: ${result.message}", Toast.LENGTH_LONG).show()
                     }
                 }
@@ -302,13 +344,15 @@ class MainActivity : AppCompatActivity() {
         if (resultCode != Activity.RESULT_OK || data?.data == null) return
 
         when (requestCode) {
-            PICK_DESTINATION_REQUEST -> {
-                val uri = data.data!!
-                startRealBackup(uri)
-            }
+            PICK_DESTINATION_REQUEST -> startRealBackup(data.data!!)
             PICK_BACKUP_REQUEST -> {
                 statusText.text = "Backup file selected.\nFull restore engine will come in Build 3."
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        wakeLock?.let { if (it.isHeld) it.release() }
     }
 }
