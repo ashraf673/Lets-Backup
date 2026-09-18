@@ -187,7 +187,7 @@ class MainActivity : AppCompatActivity() {
                 BackupState.updateProgress(this, current)
                 runOnUiThread {
                     val percent = if (total > 0) current * 100 / total else 0
-                    statusText.text = "$stage\n$file: $current/$total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
+                    statusText.text = "$stage\nFile: $current/$total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
                 }
             }
             val result = writer.createArchive()
