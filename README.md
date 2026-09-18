@@ -2,31 +2,29 @@
 
 **Portable • Verified • Lossless** photo & video backup for Android.
 
-## Version 0.7 – Build 1 (Core Backup Engine)
+## Version 0.8 – Build 2 (Reliability)
 
-### What works now
-- Media scanning (photos + videos)
-- Album selection + Select All / Clear
-- Date range filter
-- Media type filter (Photos / Videos / Both)
-- Live size calculation
-- **Choose destination folder** (Internal / SD / USB via SAF)
-- **Create real `.lb.zip` archive**
-- Original files copied lossless (ZIP STORED)
-- `manifest.json` generated
-- `checksums.sha256` (SHA-256) generated
-- Progress shown in status area
-- Success / error dialog
+### What works now (Build 1 + Build 2)
 
-### How to test
-1. Open app → Backup
-2. Select albums / date / type
-3. Press **START BACKUP**
-4. Choose a folder (create a new folder recommended)
-5. Wait for the backup to finish
-6. Check the folder – you should see `LetsBackup_YYYY-MM-DD_HH-mm-ss.lb.zip`
+**Backup Engine**
+- Media scanning + Album / Date / Type selection
+- Choose destination folder (Internal / SD / USB)
+- Create real `.lb.zip` (lossless)
+- `manifest.json` + `checksums.sha256`
+- Progress display
+
+**Reliability (Build 2)**
+- Detects incomplete backup on next launch
+- Option to Delete incomplete state or keep it
+- Keeps screen on during backup
+- Partial wake lock so backup is less likely to be killed
+- Progress is saved so the app knows how far it got
+
+### How to test incomplete backup detection
+1. Start a backup with many files
+2. Force close the app in the middle
+3. Reopen the app → you should see the "Incomplete Backup Found" dialog
 
 ### Still coming
-- Build 2: Resume + background reliability
 - Build 3: Full Restore engine
-- Build 4: Final UI polish + logo + watermark + dark mode
+- Build 4: Final UI polish
