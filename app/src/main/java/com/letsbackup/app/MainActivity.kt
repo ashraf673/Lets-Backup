@@ -20,6 +20,10 @@ import com.letsbackup.app.backup.BackupState
 import com.letsbackup.app.media.MediaScanner
 import com.letsbackup.app.model.BackupSelection
 import com.letsbackup.app.model.MediaItem
+import com.letsbackup.app.util.AppLog
+import com.letsbackup.app.ui.BugReportActivity
+import com.letsbackup.app.restore.RestoreHelper
+import com.letsbackup.app.restore.ArchiveRestorer
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -67,6 +71,11 @@ class MainActivity : AppCompatActivity() {
         mediaTypeGroup = findViewById(R.id.mediaTypeGroup)
         startBackupBtn = findViewById(R.id.startBackupBtn)
 
+        findViewById<TextView>(R.id.bugReportBtn)?.setOnClickListener {
+            startActivity(Intent(this, BugReportActivity::class.java))
+        }
+
+        AppLog.i("MainActivity", "App started - Build 3")
         checkIncompleteBackup()
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
@@ -107,21 +116,18 @@ class MainActivity : AppCompatActivity() {
             if (isBackingUp) return@setOnClickListener
             val selection = buildSelection()
             if (selection.totalFiles == 0) {
-                statusText.text = "No files selected. Please choose albums or change filters."
+                statusText.text = "No files selected."
                 return@setOnClickListener
             }
-
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
             }
             startActivityForResult(intent, PICK_DESTINATION_REQUEST)
         }
 
         findViewById<Button>(R.id.backToHomeBtn).setOnClickListener {
             if (isBackingUp) {
-                Toast.makeText(this, "Backup is running. Please wait.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please wait.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             selectionPanel.visibility = View.GONE
@@ -132,41 +138,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkIncompleteBackup() {
         if (!BackupState.isInProgress(this)) return
-
         val fileName = BackupState.getFileName(this) ?: return
         val completed = BackupState.getCompletedFiles(this)
         val total = BackupState.getTotalFiles(this)
-
         AlertDialog.Builder(this)
             .setTitle("Incomplete Backup Found")
-            .setMessage("A previous backup was interrupted.\n\nFile: $fileName\nProgress: $completed / $total files\n\nWhat would you like to do?")
-            .setPositiveButton("Delete Incomplete") { _, _ ->
-                BackupState.markFinished(this)
-                statusText.text = "Incomplete backup cleared."
-                Toast.makeText(this, "Incomplete backup state cleared", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Keep & Continue Later") { _, _ ->
-                statusText.text = "Incomplete backup kept.\nYou can start a new backup when ready."
-            }
-            .setCancelable(false)
+            .setMessage("File: $fileName\nProgress: $completed / $total")
+            .setPositiveButton("Delete") { _, _ -> BackupState.markFinished(this) }
+            .setNegativeButton("Keep", null)
             .show()
     }
 
     private fun startBackupFlow() {
-        statusText.text = "Scanning photos and videos…"
+        AppLog.i("Backup", "Starting media scan")
+        statusText.text = "Scanning…"
         homePanel.visibility = View.GONE
         selectionPanel.visibility = View.VISIBLE
-
         Thread {
             allItems = MediaScanner.scanImagesAndVideos(contentResolver)
+            AppLog.i("Backup", "Scan finished: ${allItems.size} files")
             albums = MediaScanner.groupByAlbum(allItems)
             selectedAlbums.clear()
             selectedAlbums.addAll(albums.keys)
-
             runOnUiThread {
                 buildAlbumCheckboxes()
                 updateSize()
-                statusText.text = "Scan complete. ${allItems.size} files found.\nSelect albums and date range, then start backup."
+                statusText.text = "Found ${allItems.size} files. Select and start backup."
             }
         }.start()
     }
@@ -174,66 +171,67 @@ class MainActivity : AppCompatActivity() {
     private fun startRealBackup(destinationUri: Uri) {
         val selection = buildSelection()
         if (selection.totalFiles == 0) return
-
         isBackingUp = true
         startBackupBtn.isEnabled = false
         startBackupBtn.text = "BACKING UP…"
+        AppLog.i("Backup", "Starting backup")
         statusText.text = "Starting backup…"
-
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LetsBackup::BackupLock")
         wakeLock?.acquire(60 * 60 * 1000L)
-
-        try {
-            contentResolver.takePersistableUriPermission(
-                destinationUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
-        } catch (_: Exception) { }
-
-        val fileName = "LetsBackup_${SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(Date())}.lb.zip"
-        BackupState.markStarted(this, destinationUri, fileName, selection.totalFiles)
-
+        try { contentResolver.takePersistableUriPermission(destinationUri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (_: Exception) {}
+        BackupState.markStarted(this, destinationUri, "backup.lb.zip", selection.totalFiles)
         Thread {
-            val writer = ArchiveWriter(
-                context = this,
-                selection = selection,
-                destinationTreeUri = destinationUri
-            ) { current, total, bytesCopied, totalBytes, stage ->
+            val writer = ArchiveWriter(this, selection, destinationUri) { current, total, bytesCopied, totalBytes, stage ->
                 BackupState.updateProgress(this, current)
                 runOnUiThread {
-                    val percent = if (total > 0) (current * 100 / total) else 0
-                    statusText.text = "$stage\n\nFile: $current / $total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
+                    val percent = if (total > 0) current * 100 / total else 0
+                    statusText.text = "$stage\n$file: $current/$total\n${formatBytes(bytesCopied)} / ${formatBytes(totalBytes)}\n$percent%"
                 }
             }
-
             val result = writer.createArchive()
-
             runOnUiThread {
                 isBackingUp = false
                 startBackupBtn.isEnabled = true
                 startBackupBtn.text = "START BACKUP"
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 wakeLock?.release()
-                wakeLock = null
-
                 when (result) {
                     is ArchiveWriter.Result.Success -> {
                         BackupState.markFinished(this)
-                        statusText.text = "✅ Backup completed and verified!\n\nFile: ${result.fileName}\n\nYou can safely disconnect storage."
-                        AlertDialog.Builder(this)
-                            .setTitle("Backup Completed")
-                            .setMessage("Backup saved successfully as:\n\n${result.fileName}\n\nYou can now safely remove the storage if used.")
-                            .setPositiveButton("OK", null)
-                            .show()
+                        AppLog.i("Backup", "SUCCESS ${result.fileName}")
+                        statusText.text = "✅ Backup completed\n${result.fileName}"
+                        AlertDialog.Builder(this).setTitle("Backup Completed").setMessage(result.fileName).setPositiveButton("OK", null).show()
                     }
                     is ArchiveWriter.Result.Error -> {
-                        statusText.text = "❌ Backup failed or interrupted:\n${result.message}\n\nYou can try again or clear the incomplete state later."
-                        Toast.makeText(this, "Backup failed: ${result.message}", Toast.LENGTH_LONG).show()
+                        AppLog.e("Backup", result.message)
+                        statusText.text = "❌ ${result.message}"
                     }
                 }
+            }
+        }.start()
+    }
+
+    private fun startRestore(uri: Uri, totalHint: Int) {
+        isBackingUp = true
+        statusText.text = "Restoring…"
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Thread {
+            val restorer = ArchiveRestorer(this, uri) { current, total, stage ->
+                runOnUiThread {
+                    val t = if (total > 0) total else totalHint
+                    statusText.text = "$stage\n$current / $t"
+                }
+            }
+            val result = restorer.restoreAll()
+            runOnUiThread {
+                isBackingUp = false
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                statusText.text = "✅ Restored: ${result.restored}  Failed: ${result.failed}"
+                AlertDialog.Builder(this).setTitle("Restore Completed")
+                    .setMessage("Restored: ${result.restored}\nFailed: ${result.failed}\nVerified: ${result.verified}")
+                    .setPositiveButton("OK", null).show()
             }
         }.start()
     }
@@ -242,10 +240,10 @@ class MainActivity : AppCompatActivity() {
         albumListContainer.removeAllViews()
         albums.forEach { (album, items) ->
             val cb = CheckBox(this).apply {
-                text = "$album  (${items.size})"
+                text = "$album (${items.size})"
                 isChecked = selectedAlbums.contains(album)
-                setOnCheckedChangeListener { _, isChecked ->
-                    if (isChecked) selectedAlbums.add(album) else selectedAlbums.remove(album)
+                setOnCheckedChangeListener { _, checked ->
+                    if (checked) selectedAlbums.add(album) else selectedAlbums.remove(album)
                     updateSize()
                 }
             }
@@ -256,8 +254,7 @@ class MainActivity : AppCompatActivity() {
     private fun refreshAlbumCheckboxes() {
         for (i in 0 until albumListContainer.childCount) {
             val cb = albumListContainer.getChildAt(i) as? CheckBox ?: continue
-            val album = cb.text.toString().substringBefore("  (")
-            cb.isChecked = selectedAlbums.contains(album)
+            cb.isChecked = selectedAlbums.contains(cb.text.toString().substringBefore(" ("))
         }
     }
 
@@ -265,88 +262,70 @@ class MainActivity : AppCompatActivity() {
         val cal = Calendar.getInstance()
         DatePickerDialog(this, { _, y, m, d ->
             cal.set(y, m, d, 0, 0, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            if (isFrom) {
-                fromDate = cal.timeInMillis
-                fromDateBtn.text = "From: ${dateFormat.format(cal.time)}"
-            } else {
-                cal.set(Calendar.HOUR_OF_DAY, 23)
-                cal.set(Calendar.MINUTE, 59)
-                toDate = cal.timeInMillis
-                toDateBtn.text = "To: ${dateFormat.format(cal.time)}"
-            }
+            if (isFrom) { fromDate = cal.timeInMillis; fromDateBtn.text = "From: ${dateFormat.format(cal.time)}" }
+            else { cal.set(Calendar.HOUR_OF_DAY, 23); toDate = cal.timeInMillis; toDateBtn.text = "To: ${dateFormat.format(cal.time)}" }
             updateSize()
         }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
     }
 
-    private fun buildSelection(): BackupSelection {
-        val filtered = allItems.filter { item ->
-            val albumOk = selectedAlbums.contains(item.albumName)
-            val typeOk = (item.isImage && includePhotos) || (item.isVideo && includeVideos)
-            val date = if (item.dateTaken > 0) item.dateTaken else item.dateModified
-            val dateOk = (fromDate == null || date >= fromDate!!) &&
-                    (toDate == null || date <= toDate!!)
-            albumOk && typeOk && dateOk
-        }
-        return BackupSelection(
-            items = filtered,
-            selectedAlbums = selectedAlbums.toList(),
-            fromDate = fromDate,
-            toDate = toDate,
-            includePhotos = includePhotos,
-            includeVideos = includeVideos
-        )
-    }
+    private fun buildSelection() = BackupSelection(
+        allItems.filter {
+            selectedAlbums.contains(it.albumName) &&
+            ((it.isImage && includePhotos) || (it.isVideo && includeVideos)) &&
+            (fromDate == null || (if (it.dateTaken > 0) it.dateTaken else it.dateModified) >= fromDate!!) &&
+            (toDate == null || (if (it.dateTaken > 0) it.dateTaken else it.dateModified) <= toDate!!)
+        }, selectedAlbums.toList(), fromDate, toDate, includePhotos, includeVideos
+    )
 
     private fun updateSize() {
         val sel = buildSelection()
-        sizeText.text = "Selected: ${sel.totalFiles} files  •  ${formatBytes(sel.totalBytes)}"
+        sizeText.text = "Selected: ${sel.totalFiles}  •  ${formatBytes(sel.totalBytes)}"
     }
 
-    private fun hasMediaAccess(): Boolean {
-        return if (android.os.Build.VERSION.SDK_INT >= 33) {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-    }
+    private fun hasMediaAccess() = if (android.os.Build.VERSION.SDK_INT >= 33)
+        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
+    else ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
 
     private fun requestMediaAccess() {
-        val permissions = if (android.os.Build.VERSION.SDK_INT >= 33) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        ActivityCompat.requestPermissions(this, permissions, MEDIA_PERMISSION_REQUEST)
+        val p = if (android.os.Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+        else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        ActivityCompat.requestPermissions(this, p, MEDIA_PERMISSION_REQUEST)
     }
 
     private fun formatBytes(v: Long): String {
         if (v < 1024) return "$v B"
-        val kb = v / 1024.0
-        if (kb < 1024) return "%.1f KB".format(kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return "%.1f MB".format(mb)
+        val kb = v / 1024.0; if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0; if (mb < 1024) return "%.1f MB".format(mb)
         return "%.2f GB".format(mb / 1024.0)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, results)
-        if (requestCode == MEDIA_PERMISSION_REQUEST) {
-            if (hasMediaAccess()) startBackupFlow()
-            else statusText.text = "Permission denied. Please allow photo/video access."
-        }
+        if (requestCode == MEDIA_PERMISSION_REQUEST && hasMediaAccess()) startBackupFlow()
     }
 
-    @Deprecated("Prototype")
+    @Deprecated("")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != Activity.RESULT_OK || data?.data == null) return
-
         when (requestCode) {
             PICK_DESTINATION_REQUEST -> startRealBackup(data.data!!)
             PICK_BACKUP_REQUEST -> {
-                statusText.text = "Backup file selected.\nFull restore engine will come in Build 3."
+                val uri = data.data!!
+                AppLog.i("Restore", "Selected $uri")
+                statusText.text = "Checking backup…"
+                Thread {
+                    val info = RestoreHelper.isValidLetsBackup(this, uri)
+                    runOnUiThread {
+                        if (info == null) { statusText.text = "Not a valid Let's Backup archive."; return@runOnUiThread }
+                        AlertDialog.Builder(this)
+                            .setTitle("Restore")
+                            .setMessage("${info.fileName}\n${info.totalFiles} files\n${formatBytes(info.totalBytes)}\n\nRestore everything?")
+                            .setPositiveButton("Restore") { _, _ -> startRestore(uri, info.totalFiles) }
+                            .setNegativeButton("Cancel", null).show()
+                    }
+                }.start()
             }
         }
     }
