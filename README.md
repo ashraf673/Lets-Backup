@@ -2,23 +2,31 @@
 
 **Portable • Verified • Lossless** photo & video backup for Android.
 
-## Current Version: 0.5
+## Version 0.7 – Build 1 (Core Backup Engine)
 
-### Working features
-- Modern Material Design home screen
-- Full MediaStore scanning (photos + videos)
-- Album / folder grouping and selection
-- Select All / Clear
-- Date range filter (From / To)
+### What works now
+- Media scanning (photos + videos)
+- Album selection + Select All / Clear
+- Date range filter
 - Media type filter (Photos / Videos / Both)
-- Accurate live size calculation
-- Permission handling (Android 13+)
+- Live size calculation
+- **Choose destination folder** (Internal / SD / USB via SAF)
+- **Create real `.lb.zip` archive**
+- Original files copied lossless (ZIP STORED)
+- `manifest.json` generated
+- `checksums.sha256` (SHA-256) generated
+- Progress shown in status area
+- Success / error dialog
 
-### Next (coming soon)
-- Destination selection (SAF)
-- .lb.zip archive creation with SHA-256 + manifest
-- Full verification
-- Restore engine with merge + Replace/Skip
+### How to test
+1. Open app → Backup
+2. Select albums / date / type
+3. Press **START BACKUP**
+4. Choose a folder (create a new folder recommended)
+5. Wait for the backup to finish
+6. Check the folder – you should see `LetsBackup_YYYY-MM-DD_HH-mm-ss.lb.zip`
 
-## Build
-Connect this repo to Codemagic and run the `android-stage1-debug` workflow.
+### Still coming
+- Build 2: Resume + background reliability
+- Build 3: Full Restore engine
+- Build 4: Final UI polish + logo + watermark + dark mode
