@@ -50,8 +50,8 @@ class MainActivity : AppCompatActivity() {
     private var includeVideos = true
     private var isBackingUp = false
     private var wakeLock: PowerManager.WakeLock? = null
-    private var watermarkNormal: TextView? = null
-    private var watermarkBig: TextView? = null
+    private var watermarkNormal: View? = null
+    private var watermarkBig: View? = null
     private var themeMode = 0
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, BugReportActivity::class.java))
         }
 
-        AppLog.i("MainActivity", "App started v1.2 Build 4")
+        AppLog.i("MainActivity", "App started v1.3")
         checkIncompleteBackup()
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
@@ -170,7 +170,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startBackupFlow() {
-        AppLog.i("Backup", "Starting media scan")
         statusText.text = "Scanning…"
         homePanel.visibility = View.GONE
         selectionPanel.visibility = View.VISIBLE
