@@ -13,6 +13,7 @@ import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.letsbackup.app.archive.ArchiveWriter
@@ -49,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     private var includeVideos = true
     private var isBackingUp = false
     private var wakeLock: PowerManager.WakeLock? = null
+    private var watermarkNormal: TextView? = null
+    private var watermarkBig: TextView? = null
+    private var themeMode = 0
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
@@ -72,11 +76,17 @@ class MainActivity : AppCompatActivity() {
         mediaTypeGroup = findViewById(R.id.mediaTypeGroup)
         startBackupBtn = findViewById(R.id.startBackupBtn)
 
+        val themeBtn = findViewById<Button>(R.id.themeBtn)
+        updateThemeButton(themeBtn)
+        themeBtn?.setOnClickListener { cycleTheme(themeBtn) }
+        watermarkNormal = findViewById(R.id.watermarkText)
+        watermarkBig = findViewById(R.id.watermarkProgress)
+
         findViewById<TextView>(R.id.bugReportBtn)?.setOnClickListener {
             startActivity(Intent(this, BugReportActivity::class.java))
         }
 
-        AppLog.i("MainActivity", "App started v1.1")
+        AppLog.i("MainActivity", "App started v1.2 Build 4")
         checkIncompleteBackup()
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
@@ -84,24 +94,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<LinearLayout>(R.id.restoreCard).setOnClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                type = "*/*"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            startActivityForResult(intent, PICK_BACKUP_REQUEST)
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE)
+            }, PICK_BACKUP_REQUEST)
         }
 
         findViewById<Button>(R.id.selectAllBtn).setOnClickListener {
-            selectedAlbums.clear()
-            selectedAlbums.addAll(albums.keys)
-            refreshAlbumCheckboxes()
-            updateSize()
+            selectedAlbums.clear(); selectedAlbums.addAll(albums.keys)
+            refreshAlbumCheckboxes(); updateSize()
         }
-
         findViewById<Button>(R.id.clearAllBtn).setOnClickListener {
-            selectedAlbums.clear()
-            refreshAlbumCheckboxes()
-            updateSize()
+            selectedAlbums.clear(); refreshAlbumCheckboxes(); updateSize()
         }
 
         fromDateBtn.setOnClickListener { showDatePicker(true) }
@@ -115,39 +118,55 @@ class MainActivity : AppCompatActivity() {
 
         startBackupBtn.setOnClickListener {
             if (isBackingUp) return@setOnClickListener
-            val selection = buildSelection()
-            if (selection.totalFiles == 0) {
-                statusText.text = "No files selected."
-                return@setOnClickListener
+            if (buildSelection().totalFiles == 0) {
+                statusText.text = "No files selected."; return@setOnClickListener
             }
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-            }
-            startActivityForResult(intent, PICK_DESTINATION_REQUEST)
+            }, PICK_DESTINATION_REQUEST)
         }
 
         findViewById<Button>(R.id.backToHomeBtn).setOnClickListener {
-            if (isBackingUp) {
-                Toast.makeText(this, "Please wait.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            if (isBackingUp) { Toast.makeText(this, "Please wait.", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
             selectionPanel.visibility = View.GONE
             homePanel.visibility = View.VISIBLE
             statusText.text = "Ready"
         }
     }
 
+    private fun updateThemeButton(btn: Button?) {
+        btn?.text = when (AppCompatDelegate.getDefaultNightMode()) {
+            AppCompatDelegate.MODE_NIGHT_NO -> "Theme: Light"
+            AppCompatDelegate.MODE_NIGHT_YES -> "Theme: Dark"
+            else -> "Theme: System"
+        }
+    }
+
+    private fun cycleTheme(btn: Button?) {
+        themeMode = (themeMode + 1) % 3
+        when (themeMode) {
+            0 -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            1 -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+            2 -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+        }
+        updateThemeButton(btn)
+    }
+
+    private fun showProgressWatermark(show: Boolean) {
+        runOnUiThread {
+            watermarkNormal?.visibility = if (show) View.GONE else View.VISIBLE
+            watermarkBig?.visibility = if (show) View.VISIBLE else View.GONE
+        }
+    }
+
     private fun checkIncompleteBackup() {
         if (!BackupState.isInProgress(this)) return
         val fileName = BackupState.getFileName(this) ?: return
-        val completed = BackupState.getCompletedFiles(this)
-        val total = BackupState.getTotalFiles(this)
         AlertDialog.Builder(this)
             .setTitle("Incomplete Backup Found")
-            .setMessage("File: $fileName\nProgress: $completed / $total")
+            .setMessage("File: $fileName\nProgress: ${BackupState.getCompletedFiles(this)} / ${BackupState.getTotalFiles(this)}")
             .setPositiveButton("Delete") { _, _ -> BackupState.markFinished(this) }
-            .setNegativeButton("Keep", null)
-            .show()
+            .setNegativeButton("Keep", null).show()
     }
 
     private fun startBackupFlow() {
@@ -157,13 +176,10 @@ class MainActivity : AppCompatActivity() {
         selectionPanel.visibility = View.VISIBLE
         Thread {
             allItems = MediaScanner.scanImagesAndVideos(contentResolver)
-            AppLog.i("Backup", "Scan finished: ${allItems.size} files")
             albums = MediaScanner.groupByAlbum(allItems)
-            selectedAlbums.clear()
-            selectedAlbums.addAll(albums.keys)
+            selectedAlbums.clear(); selectedAlbums.addAll(albums.keys)
             runOnUiThread {
-                buildAlbumCheckboxes()
-                updateSize()
+                buildAlbumCheckboxes(); updateSize()
                 statusText.text = "Found ${allItems.size} files. Select and start backup."
             }
         }.start()
@@ -175,8 +191,8 @@ class MainActivity : AppCompatActivity() {
         isBackingUp = true
         startBackupBtn.isEnabled = false
         startBackupBtn.text = "BACKING UP…"
-        AppLog.i("Backup", "Starting backup")
         statusText.text = "Starting backup…"
+        showProgressWatermark(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LetsBackup::BackupLock")
@@ -196,19 +212,16 @@ class MainActivity : AppCompatActivity() {
                 isBackingUp = false
                 startBackupBtn.isEnabled = true
                 startBackupBtn.text = "START BACKUP"
+                showProgressWatermark(false)
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 wakeLock?.release()
                 when (result) {
                     is ArchiveWriter.Result.Success -> {
                         BackupState.markFinished(this)
-                        AppLog.i("Backup", "SUCCESS ${result.fileName}")
                         statusText.text = "✅ Backup completed\n${result.fileName}"
                         AlertDialog.Builder(this).setTitle("Backup Completed").setMessage(result.fileName).setPositiveButton("OK", null).show()
                     }
-                    is ArchiveWriter.Result.Error -> {
-                        AppLog.e("Backup", result.message)
-                        statusText.text = "❌ ${result.message}"
-                    }
+                    is ArchiveWriter.Result.Error -> statusText.text = "❌ ${result.message}"
                 }
             }
         }.start()
@@ -217,6 +230,7 @@ class MainActivity : AppCompatActivity() {
     private fun startRestore(uri: Uri, totalHint: Int, mode: RestoreMode) {
         isBackingUp = true
         statusText.text = "Restoring…"
+        showProgressWatermark(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Thread {
             val restorer = ArchiveRestorer(this, uri, mode) { current, total, stage ->
@@ -228,6 +242,7 @@ class MainActivity : AppCompatActivity() {
             val result = restorer.restoreAll()
             runOnUiThread {
                 isBackingUp = false
+                showProgressWatermark(false)
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 statusText.text = "✅ Restored: ${result.restored}  Failed: ${result.failed}"
                 AlertDialog.Builder(this).setTitle("Restore Completed")
@@ -242,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         albums.forEach { (album, items) ->
             val cb = CheckBox(this).apply {
                 text = "$album (${items.size})"
-                setTextColor(0xFF1A1A1A.toInt())
+                setTextColor(resources.getColor(R.color.lb_text_primary, theme))
                 isChecked = selectedAlbums.contains(album)
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedAlbums.add(album) else selectedAlbums.remove(album)
@@ -315,7 +330,6 @@ class MainActivity : AppCompatActivity() {
             PICK_DESTINATION_REQUEST -> startRealBackup(data.data!!)
             PICK_BACKUP_REQUEST -> {
                 val uri = data.data!!
-                AppLog.i("Restore", "Selected $uri")
                 statusText.text = "Checking backup…"
                 Thread {
                     val info = RestoreHelper.isValidLetsBackup(this, uri)
@@ -324,14 +338,9 @@ class MainActivity : AppCompatActivity() {
                         AlertDialog.Builder(this)
                             .setTitle("Restore Backup")
                             .setMessage("Valid backup found:\n\n${info.fileName}\nFiles: ${info.totalFiles}\nSize: ${formatBytes(info.totalBytes)}\n\nWhere do you want to restore?")
-                            .setPositiveButton("Original locations") { _, _ ->
-                                startRestore(uri, info.totalFiles, RestoreMode.ORIGINAL_PATHS)
-                            }
-                            .setNeutralButton("Dedicated folder") { _, _ ->
-                                startRestore(uri, info.totalFiles, RestoreMode.DEDICATED_FOLDER)
-                            }
-                            .setNegativeButton("Cancel", null)
-                            .show()
+                            .setPositiveButton("Original locations") { _, _ -> startRestore(uri, info.totalFiles, RestoreMode.ORIGINAL_PATHS) }
+                            .setNeutralButton("Dedicated folder") { _, _ -> startRestore(uri, info.totalFiles, RestoreMode.DEDICATED_FOLDER) }
+                            .setNegativeButton("Cancel", null).show()
                     }
                 }.start()
             }
