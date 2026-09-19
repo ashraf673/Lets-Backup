@@ -24,6 +24,7 @@ import com.letsbackup.app.util.AppLog
 import com.letsbackup.app.ui.BugReportActivity
 import com.letsbackup.app.restore.RestoreHelper
 import com.letsbackup.app.restore.ArchiveRestorer
+import com.letsbackup.app.restore.RestoreMode
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -75,7 +76,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, BugReportActivity::class.java))
         }
 
-        AppLog.i("MainActivity", "App started - Build 3")
+        AppLog.i("MainActivity", "App started v1.1")
         checkIncompleteBackup()
 
         findViewById<LinearLayout>(R.id.backupCard).setOnClickListener {
@@ -213,12 +214,12 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun startRestore(uri: Uri, totalHint: Int) {
+    private fun startRestore(uri: Uri, totalHint: Int, mode: RestoreMode) {
         isBackingUp = true
         statusText.text = "Restoring…"
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Thread {
-            val restorer = ArchiveRestorer(this, uri) { current, total, stage ->
+            val restorer = ArchiveRestorer(this, uri, mode) { current, total, stage ->
                 runOnUiThread {
                     val t = if (total > 0) total else totalHint
                     statusText.text = "$stage\n$current / $t"
@@ -241,6 +242,7 @@ class MainActivity : AppCompatActivity() {
         albums.forEach { (album, items) ->
             val cb = CheckBox(this).apply {
                 text = "$album (${items.size})"
+                setTextColor(0xFF1A1A1A.toInt())
                 isChecked = selectedAlbums.contains(album)
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedAlbums.add(album) else selectedAlbums.remove(album)
@@ -320,10 +322,16 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (info == null) { statusText.text = "Not a valid Let's Backup archive."; return@runOnUiThread }
                         AlertDialog.Builder(this)
-                            .setTitle("Restore")
-                            .setMessage("${info.fileName}\n${info.totalFiles} files\n${formatBytes(info.totalBytes)}\n\nRestore everything?")
-                            .setPositiveButton("Restore") { _, _ -> startRestore(uri, info.totalFiles) }
-                            .setNegativeButton("Cancel", null).show()
+                            .setTitle("Restore Backup")
+                            .setMessage("Valid backup found:\n\n${info.fileName}\nFiles: ${info.totalFiles}\nSize: ${formatBytes(info.totalBytes)}\n\nWhere do you want to restore?")
+                            .setPositiveButton("Original locations") { _, _ ->
+                                startRestore(uri, info.totalFiles, RestoreMode.ORIGINAL_PATHS)
+                            }
+                            .setNeutralButton("Dedicated folder") { _, _ ->
+                                startRestore(uri, info.totalFiles, RestoreMode.DEDICATED_FOLDER)
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
                     }
                 }.start()
             }
