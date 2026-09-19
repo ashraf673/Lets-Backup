@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LetsBackup" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.LetsBackup" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/lb_primary</item>
         <item name="colorPrimaryDark">@color/lb_primary_dark</item>
         <item name="colorAccent">@color/lb_accent</item>
         <item name="android:statusBarColor">@color/lb_primary_dark</item>
         <item name="android:navigationBarColor">@color/lb_background</item>
         <item name="android:windowBackground">@color/lb_background</item>
+        <item name="android:textColorPrimary">@color/lb_text_primary</item>
+        <item name="android:textColorSecondary">@color/lb_text_secondary</item>
         <item name="android:fontFamily">sans-serif</item>
+        <item name="colorOnSurface">@color/lb_text_primary</item>
+        <item name="android:colorControlNormal">@color/lb_primary</item>
     </style>
 </resources>

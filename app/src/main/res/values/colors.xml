@@ -10,4 +10,5 @@
     <color name="lb_success">#2E7D32</color>
     <color name="lb_button_backup">#1565C0</color>
     <color name="lb_button_restore">#00897B</color>
+    <color name="lb_checkbox_text">#1A1A1A</color>
 </resources>
