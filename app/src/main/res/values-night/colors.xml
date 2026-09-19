@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lb_primary">#42A5F5</color>
+    <color name="lb_primary_dark">#1565C0</color>
+    <color name="lb_accent">#26C6DA</color>
+    <color name="lb_background">#121212</color>
+    <color name="lb_card">#1E1E1E</color>
+    <color name="lb_text_primary">#FFFFFF</color>
+    <color name="lb_text_secondary">#B0B0B0</color>
+    <color name="lb_success">#66BB6A</color>
+    <color name="lb_watermark">#78909C</color>
+    <color name="lb_watermark_progress">#42A5F5</color>
+</resources>
