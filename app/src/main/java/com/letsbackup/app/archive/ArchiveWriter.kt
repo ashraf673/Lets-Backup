@@ -15,6 +15,7 @@ import java.security.MessageDigest
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import com.letsbackup.app.util.AppLog
 
 class ArchiveWriter(
     private val context: Context,
@@ -25,6 +26,7 @@ class ArchiveWriter(
     private val buffer = ByteArray(512 * 1024)
 
     fun createArchive(): Result {
+        AppLog.i("ArchiveWriter", "createArchive started - ${selection.totalFiles} files, ${selection.totalBytes} bytes")
         val tree = DocumentFile.fromTreeUri(context, destinationTreeUri)
             ?: return Result.Error("Cannot access selected destination folder")
 
@@ -48,23 +50,22 @@ class ArchiveWriter(
                         val entryName = PathSafety.safeRelativePath(item.relativePath)?.toString()
                             ?: item.displayName.replace("/", "_")
 
-                        val inputStream = context.contentResolver.openInputStream(Uri.parse(item.uriString))
-                            ?: return@forEachIndexed
+                        val uri = Uri.parse(item.uriString)
 
+                        // Pass 1: stream once to compute CRC + SHA-256 + size (no full-file in RAM → no OOM)
                         val crc = CRC32()
                         val digest = MessageDigest.getInstance("SHA-256")
-                        val chunks = mutableListOf<ByteArray>()
                         var fileSize = 0L
-
-                        inputStream.use { input ->
+                        context.contentResolver.openInputStream(uri)?.use { input ->
                             var read: Int
                             while (input.read(buffer).also { read = it } != -1) {
-                                val chunk = buffer.copyOf(read)
-                                chunks.add(chunk)
-                                crc.update(chunk)
-                                digest.update(chunk)
+                                crc.update(buffer, 0, read)
+                                digest.update(buffer, 0, read)
                                 fileSize += read
                             }
+                        } ?: run {
+                            AppLog.e("ArchiveWriter", "Cannot open: ${item.displayName}")
+                            return@forEachIndexed
                         }
 
                         val sha = digest.digest().joinToString("") { "%02x".format(it) }
@@ -75,8 +76,14 @@ class ArchiveWriter(
                         entry.compressedSize = fileSize
                         entry.crc = crc.value
 
+                        // Pass 2: stream again into the zip (constant memory)
                         zos.putNextEntry(entry)
-                        chunks.forEach { zos.write(it) }
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            var read: Int
+                            while (input.read(buffer).also { read = it } != -1) {
+                                zos.write(buffer, 0, read)
+                            }
+                        }
                         zos.closeEntry()
 
                         totalCopied += fileSize
@@ -93,9 +100,11 @@ class ArchiveWriter(
                         )
                     }
 
+                    // checksums.sha256
                     onProgress(totalFiles, totalFiles, totalCopied, totalBytes, "Writing checksums")
                     writeStoredEntry(zos, BackupFormat.CHECKSUMS, checksumLines.joinToString("\n").toByteArray(Charsets.UTF_8))
 
+                    // manifest.json
                     onProgress(totalFiles, totalFiles, totalCopied, totalBytes, "Writing manifest")
                     val manifest = BackupManifest(
                         createdAt = System.currentTimeMillis(),
@@ -114,21 +123,23 @@ class ArchiveWriter(
             }
 
             onProgress(totalFiles, totalFiles, totalCopied, totalBytes, "Backup completed")
+            AppLog.i("ArchiveWriter", "Archive created successfully: $fileName")
             return Result.Success(docFile.uri, fileName)
 
         } catch (e: Exception) {
-            docFile.delete()
+            try { docFile.delete() } catch (_: Exception) {}
+            AppLog.e("ArchiveWriter", "Archive failed", e)
             return Result.Error(e.message ?: "Backup failed")
         }
     }
 
     private fun writeStoredEntry(zos: ZipOutputStream, name: String, data: ByteArray) {
+        val crc = CRC32()
+        crc.update(data)
         val entry = ZipEntry(name)
         entry.method = ZipEntry.STORED
         entry.size = data.size.toLong()
         entry.compressedSize = data.size.toLong()
-        val crc = CRC32()
-        crc.update(data)
         entry.crc = crc.value
         zos.putNextEntry(entry)
         zos.write(data)
@@ -137,30 +148,27 @@ class ArchiveWriter(
 
     private fun buildManifestJson(m: BackupManifest): String {
         val root = JSONObject()
-        root.put("format", m.format)
-        root.put("version", m.version)
         root.put("createdAt", m.createdAt)
         root.put("selectionMode", m.selectionMode)
         root.put("selectedAlbums", JSONArray(m.selectedAlbums))
-        root.put("fromDate", m.fromDate)
-        root.put("toDate", m.toDate)
+        root.put("fromDate", m.fromDate ?: JSONObject.NULL)
+        root.put("toDate", m.toDate ?: JSONObject.NULL)
         root.put("includePhotos", m.includePhotos)
         root.put("includeVideos", m.includeVideos)
         root.put("totalFiles", m.totalFiles)
         root.put("totalBytes", m.totalBytes)
-
-        val filesArr = JSONArray()
-        m.files.forEach { f ->
-            val obj = JSONObject()
-            obj.put("path", f.path)
-            obj.put("size", f.size)
-            obj.put("mimeType", f.mimeType)
-            obj.put("dateModified", f.dateModified)
-            obj.put("dateTaken", f.dateTaken)
-            obj.put("sha256", f.sha256)
-            filesArr.put(obj)
+        val arr = JSONArray()
+        for (f in m.files) {
+            val o = JSONObject()
+            o.put("path", f.path)
+            o.put("size", f.size)
+            o.put("mimeType", f.mimeType)
+            o.put("dateModified", f.dateModified)
+            o.put("dateTaken", f.dateTaken)
+            o.put("sha256", f.sha256)
+            arr.put(o)
         }
-        root.put("files", filesArr)
+        root.put("files", arr)
         return root.toString(2)
     }
 
