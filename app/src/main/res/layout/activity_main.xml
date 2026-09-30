@@ -1,1 +1,354 @@
-PLACEHOLDER_LAYOUT
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/lb_background">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- HOME PANEL -->
+            <LinearLayout
+                android:id="@+id/homePanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <View android:layout_width="match_parent" android:layout_height="28dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Let's Backup"
+                    android:textSize="32sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_primary"
+                    android:gravity="start" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Your photos. Your memories.\nAlways with you."
+                    android:textSize="15sp"
+                    android:textColor="@color/lb_text_secondary"
+                    android:lineSpacingExtra="2dp" />
+
+                <View android:layout_width="match_parent" android:layout_height="28dp" />
+
+                <ImageView
+                    android:id="@+id/logoImage"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_logo_lb"
+                    android:contentDescription="Let's Backup logo" />
+
+                <View android:layout_width="match_parent" android:layout_height="32dp" />
+
+                <!-- BACKUP card -->
+                <LinearLayout
+                    android:id="@+id/backupCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="@drawable/card_status"
+                    android:padding="20dp"
+                    android:elevation="3dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <FrameLayout
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/card_backup">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:text="B"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF" />
+                    </FrameLayout>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Backup"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/lb_text_primary" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Save your photos and videos"
+                            android:textSize="13sp"
+                            android:textColor="@color/lb_text_secondary" />
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=">"
+                        android:textSize="20sp"
+                        android:textColor="@color/lb_text_secondary" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+                <!-- RESTORE card -->
+                <LinearLayout
+                    android:id="@+id/restoreCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="@drawable/card_status"
+                    android:padding="20dp"
+                    android:elevation="3dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <FrameLayout
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/card_restore">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:text="R"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF" />
+                    </FrameLayout>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Restore"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/lb_text_primary" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Bring your memories back"
+                            android:textSize="13sp"
+                            android:textColor="@color/lb_text_secondary" />
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=">"
+                        android:textSize="20sp"
+                        android:textColor="@color/lb_text_secondary" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <Button
+                    android:id="@+id/themeBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Theme: System"
+                    style="@style/Widget.Material3.Button.TextButton" />
+            </LinearLayout>
+
+            <!-- SELECTION PANEL -->
+            <LinearLayout
+                android:id="@+id/selectionPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Select albums"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_primary" />
+
+                <LinearLayout
+                    android:id="@+id/albumListContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:id="@+id/sizeText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Size: —"
+                    android:textSize="14sp"
+                    android:textColor="@color/lb_text_secondary" />
+
+                <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Date range"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_primary" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+                    <Button
+                        android:id="@+id/fromDateBtn"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="From"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                    <View android:layout_width="8dp" android:layout_height="1dp" />
+                    <Button
+                        android:id="@+id/toDateBtn"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="To"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Media type"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_primary" />
+                <RadioGroup
+                    android:id="@+id/mediaTypeGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+                    <RadioButton android:id="@+id/typeBoth" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Both" android:checked="true" />
+                    <RadioButton android:id="@+id/typePhotos" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Photos" android:layout_marginStart="12dp" />
+                    <RadioButton android:id="@+id/typeVideos" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Videos" android:layout_marginStart="12dp" />
+                </RadioGroup>
+
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <Button
+                    android:id="@+id/startBackupBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Start Backup"
+                    style="@style/Widget.Material3.Button" />
+
+                <Button
+                    android:id="@+id/backToHomeBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Back"
+                    style="@style/Widget.Material3.Button.TextButton" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+            <!-- STATUS (progress runs here — lower on screen) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_status"
+                android:padding="16dp"
+                android:elevation="2dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="STATUS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/lb_text_secondary" />
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Ready"
+                    android:textSize="14sp"
+                    android:textColor="@color/lb_text_primary" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="100dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bug Report -->
+    <TextView
+        android:id="@+id/bugReportBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:padding="10dp"
+        android:text="Bug"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/lb_primary"
+        android:background="#22000000"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- Fixed TOP watermark: only "Ashraf creation" (no AFC). Never moves. -->
+    <TextView
+        android:id="@+id/watermarkText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="Ashraf creation"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.04"
+        android:textColor="@color/lb_text_secondary"
+        android:alpha="0.75"
+        android:contentDescription="Ashraf creation" />
+
+    <TextView
+        android:id="@+id/watermarkProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="12dp"
+        android:text="Ashraf creation"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:contentDescription="Ashraf creation" />
+</FrameLayout>
