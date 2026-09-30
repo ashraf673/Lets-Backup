@@ -8,11 +8,11 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
+import android.os.SystemClock
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.letsbackup.app.archive.ArchiveWriter
@@ -40,7 +40,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaTypeGroup: RadioGroup
     private lateinit var startBackupBtn: Button
     private var watermarkNormal: TextView? = null
-    private var watermarkBig: TextView? = null
+
+    private var progressPanel: LinearLayout? = null
+    private var progressTitle: TextView? = null
+    private var progressCircle: ProgressBar? = null
+    private var progressPercent: TextView? = null
+    private var progressCount: TextView? = null
+    private var progressRemaining: TextView? = null
+    private var progressEta: TextView? = null
+    private var progressStage: TextView? = null
+    private var progressResult: TextView? = null
+    private var progressDoneBtn: Button? = null
 
     private var allItems: List<MediaItem> = emptyList()
     private var albums: Map<String, List<MediaItem>> = emptyMap()
@@ -49,9 +59,10 @@ class MainActivity : AppCompatActivity() {
     private var toDate: Long? = null
     private var includePhotos = true
     private var includeVideos = true
-    private var isBackingUp = false
+    private var isWorking = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var shineAnimator: android.animation.ObjectAnimator? = null
+    private var jobStartElapsed = 0L
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
@@ -76,18 +87,27 @@ class MainActivity : AppCompatActivity() {
         mediaTypeGroup = findViewById(R.id.mediaTypeGroup)
         startBackupBtn = findViewById(R.id.startBackupBtn)
 
+        progressPanel = findViewById(R.id.progressPanel)
+        progressTitle = findViewById(R.id.progressTitle)
+        progressCircle = findViewById(R.id.progressCircle)
+        progressPercent = findViewById(R.id.progressPercent)
+        progressCount = findViewById(R.id.progressCount)
+        progressRemaining = findViewById(R.id.progressRemaining)
+        progressEta = findViewById(R.id.progressEta)
+        progressStage = findViewById(R.id.progressStage)
+        progressResult = findViewById(R.id.progressResult)
+        progressDoneBtn = findViewById(R.id.progressDoneBtn)
+        progressDoneBtn?.setOnClickListener { hideProgressScreen() }
+
         val themeBtn = findViewById<Button>(R.id.themeBtn)
         themeBtn?.text = "Theme: ${ThemeHelper.currentLabel(this)}"
         themeBtn?.setOnClickListener {
-            val label = ThemeHelper.cycle(this)
-            themeBtn.text = "Theme: $label"
+            themeBtn.text = "Theme: ${ThemeHelper.cycle(this)}"
         }
 
-        // Fixed TOP watermark — only "Ashraf creation", never moves
         watermarkNormal = findViewById(R.id.watermarkText)
-        watermarkBig = findViewById(R.id.watermarkProgress)
         watermarkNormal?.text = "Ashraf creation"
-        watermarkBig?.text = "Ashraf creation"
+        findViewById<TextView>(R.id.watermarkProgress)?.text = "Ashraf creation"
 
         findViewById<ImageView>(R.id.logoImage)?.let { LogoAsset.load(it) }
 
@@ -96,10 +116,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<LinearLayout>(R.id.backupCard)?.setOnClickListener {
-            if (!isBackingUp) startBackupFlow()
+            if (!isWorking) startBackupFlow()
         }
         findViewById<LinearLayout>(R.id.restoreCard)?.setOnClickListener {
-            if (!isBackingUp) startRestoreFlow()
+            if (!isWorking) startRestoreFlow()
         }
         findViewById<Button>(R.id.backToHomeBtn)?.setOnClickListener {
             selectionPanel.visibility = View.GONE
@@ -114,8 +134,8 @@ class MainActivity : AppCompatActivity() {
             updateSize()
         }
 
-        AppLog.i("MainActivity", "App started v1.6")
-        setWatermarkProgress(false)
+        AppLog.i("MainActivity", "App started v1.7")
+        setWatermarkShine(false)
     }
 
     private fun startBackupFlow() {
@@ -240,8 +260,8 @@ class MainActivity : AppCompatActivity() {
     private fun acquireWakeLock() {
         try {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LetsBackup::Backup").apply {
-                acquire(60 * 60 * 1000L)
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LetsBackup::Job").apply {
+                acquire(3 * 60 * 60 * 1000L)
             }
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } catch (_: Exception) {}
@@ -255,15 +275,88 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {}
     }
 
+    private fun showProgressScreen(title: String) {
+        homePanel.visibility = View.GONE
+        selectionPanel.visibility = View.GONE
+        progressPanel?.visibility = View.VISIBLE
+        progressTitle?.text = title
+        progressCircle?.progress = 0
+        progressPercent?.text = "0%"
+        progressCount?.text = "0 / 0"
+        progressRemaining?.text = "Remaining: —"
+        progressEta?.text = "Estimated time: —"
+        progressStage?.text = ""
+        progressResult?.visibility = View.GONE
+        progressResult?.text = ""
+        progressDoneBtn?.visibility = View.GONE
+        setWatermarkShine(true)
+        jobStartElapsed = SystemClock.elapsedRealtime()
+    }
+
+    private fun hideProgressScreen() {
+        progressPanel?.visibility = View.GONE
+        homePanel.visibility = View.VISIBLE
+        selectionPanel.visibility = View.GONE
+        setWatermarkShine(false)
+        statusText.text = "Ready"
+    }
+
+    private fun updateProgressUi(
+        current: Int,
+        total: Int,
+        bytesCopied: Long,
+        totalBytes: Long,
+        stage: String
+    ) {
+        val pct = if (totalBytes > 0) {
+            ((bytesCopied * 100) / totalBytes).toInt().coerceIn(0, 100)
+        } else if (total > 0) {
+            ((current * 100) / total).coerceIn(0, 100)
+        } else 0
+
+        progressCircle?.progress = pct
+        progressPercent?.text = "$pct%"
+        progressCount?.text = "$current / $total"
+        progressRemaining?.text = "Remaining: ${(total - current).coerceAtLeast(0)} files"
+        progressStage?.text = stage
+
+        val elapsed = SystemClock.elapsedRealtime() - jobStartElapsed
+        if (pct in 1..99 && elapsed > 2000) {
+            val totalEst = (elapsed * 100.0 / pct).toLong()
+            val leftMs = (totalEst - elapsed).coerceAtLeast(0)
+            progressEta?.text = "Estimated time: ${formatDuration(leftMs)}"
+        } else if (pct >= 100) {
+            progressEta?.text = "Estimated time: done"
+        } else {
+            progressEta?.text = "Estimated time: calculating…"
+        }
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val sec = ms / 1000
+        val m = sec / 60
+        val s = sec % 60
+        return if (m > 0) "${m}m ${s}s" else "${s}s"
+    }
+
+    private fun showCompleted(message: String) {
+        progressResult?.visibility = View.VISIBLE
+        progressResult?.text = message
+        progressDoneBtn?.visibility = View.VISIBLE
+        progressStage?.text = ""
+        progressCircle?.progress = 100
+        progressPercent?.text = "100%"
+        progressEta?.text = "Estimated time: done"
+        progressRemaining?.text = "Remaining: 0 files"
+        setWatermarkShine(false)
+    }
+
     private fun runBackup(destinationUri: Uri) {
         val items = filteredItems()
         if (items.isEmpty()) return
-        isBackingUp = true
-        setWatermarkProgress(true)
+        isWorking = true
         acquireWakeLock()
-        statusText.text = "Backing up ${items.size} files…"
-        selectionPanel.visibility = View.GONE
-        homePanel.visibility = View.VISIBLE
+        showProgressScreen("Backing up")
 
         Thread {
             try {
@@ -275,32 +368,35 @@ class MainActivity : AppCompatActivity() {
                     includePhotos = includePhotos,
                     includeVideos = includeVideos
                 )
-                val writer = ArchiveWriter(this, selection, destinationUri) { current, total, _, _, stage ->
-                    runOnUiThread { statusText.text = "$stage ($current/$total)" }
+                val writer = ArchiveWriter(this, selection, destinationUri) { current, total, bytes, totalBytes, stage ->
+                    runOnUiThread { updateProgressUi(current, total, bytes, totalBytes, stage) }
                 }
                 when (val result = writer.createArchive()) {
                     is ArchiveWriter.Result.Success -> {
                         runOnUiThread {
-                            statusText.text = "Backup done: ${result.fileName}"
+                            updateProgressUi(items.size, items.size, selection.totalBytes, selection.totalBytes, "Done")
+                            showCompleted("Backup completed\n${result.fileName}")
                             AppLog.i("Backup", "SUCCESS: ${result.fileName}")
+                            statusText.text = "Backup completed: ${result.fileName}"
                         }
                     }
                     is ArchiveWriter.Result.Error -> {
                         runOnUiThread {
-                            statusText.text = "Backup failed: ${result.message}"
+                            showCompleted("Backup failed\n${result.message}")
                             AppLog.e("Backup", "FAILED: ${result.message}")
+                            statusText.text = "Backup failed: ${result.message}"
                         }
                     }
                 }
             } catch (e: Exception) {
+                AppLog.e("Backup", e.message ?: "unknown", e)
                 runOnUiThread {
+                    showCompleted("Backup error\n${e.message ?: "Unknown error"}")
                     statusText.text = "Error: ${e.message}"
-                    AppLog.e("Backup", e.message ?: "unknown")
                 }
             } finally {
                 runOnUiThread {
-                    isBackingUp = false
-                    setWatermarkProgress(false)
+                    isWorking = false
                     releaseWakeLock()
                 }
             }
@@ -308,42 +404,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun runRestore(uri: Uri) {
-        isBackingUp = true
-        setWatermarkProgress(true)
+        isWorking = true
         acquireWakeLock()
-        statusText.text = "Restoring…"
+        showProgressScreen("Restoring")
 
         Thread {
             try {
                 val restorer = ArchiveRestorer(this, uri, RestoreMode.ORIGINAL_PATHS) { current, total, stage ->
-                    runOnUiThread { statusText.text = "$stage ($current/$total)" }
+                    runOnUiThread {
+                        updateProgressUi(current, total, current.toLong(), total.toLong().coerceAtLeast(1), stage)
+                    }
                 }
                 val result = restorer.restoreAll()
                 runOnUiThread {
-                    statusText.text =
-                        "Restore done — restored ${result.restored}, skipped ${result.skipped}, failed ${result.failed}"
+                    val t = result.restored + result.skipped + result.failed
+                    updateProgressUi(t, t, 1, 1, "Done")
+                    showCompleted("Restore completed\nRestored ${result.restored} · Skipped ${result.skipped} · Failed ${result.failed}")
+                    statusText.text = "Restore completed"
                     AppLog.i("Restore", "done restored=${result.restored}")
                 }
             } catch (e: Exception) {
+                AppLog.e("Restore", e.message ?: "unknown", e)
                 runOnUiThread {
+                    showCompleted("Restore error\n${e.message ?: "Unknown error"}")
                     statusText.text = "Restore error: ${e.message}"
-                    AppLog.e("Restore", e.message ?: "unknown")
                 }
             } finally {
                 runOnUiThread {
-                    isBackingUp = false
-                    setWatermarkProgress(false)
+                    isWorking = false
                     releaseWakeLock()
                 }
             }
         }.start()
     }
 
-    /** Watermark stays fixed at TOP. Only soft shine during process. Progress stays lower. */
-    private fun setWatermarkProgress(active: Boolean) {
+    private fun setWatermarkShine(active: Boolean) {
         runOnUiThread {
             watermarkNormal?.visibility = View.VISIBLE
-            watermarkBig?.visibility = View.GONE
             watermarkNormal?.text = "Ashraf creation"
             if (active) {
                 watermarkNormal?.textSize = 14f
