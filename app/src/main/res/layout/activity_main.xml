@@ -15,7 +15,6 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- HOME PANEL -->
             <LinearLayout
                 android:id="@+id/homePanel"
                 android:layout_width="match_parent"
@@ -55,7 +54,6 @@
 
                 <View android:layout_width="match_parent" android:layout_height="32dp" />
 
-                <!-- BACKUP card -->
                 <LinearLayout
                     android:id="@+id/backupCard"
                     android:layout_width="match_parent"
@@ -110,7 +108,6 @@
 
                 <View android:layout_width="match_parent" android:layout_height="16dp" />
 
-                <!-- RESTORE card -->
                 <LinearLayout
                     android:id="@+id/restoreCard"
                     android:layout_width="match_parent"
@@ -173,7 +170,6 @@
                     style="@style/Widget.Material3.Button.TextButton" />
             </LinearLayout>
 
-            <!-- SELECTION PANEL -->
             <LinearLayout
                 android:id="@+id/selectionPanel"
                 android:layout_width="match_parent"
@@ -276,7 +272,6 @@
 
             <View android:layout_width="match_parent" android:layout_height="24dp" />
 
-            <!-- STATUS (progress runs here — lower on screen) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -305,7 +300,122 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Bug Report -->
+    <!-- FULL PROGRESS SCREEN -->
+    <LinearLayout
+        android:id="@+id/progressPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:background="@color/lb_background"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="24dp">
+
+        <View android:layout_width="match_parent" android:layout_height="48dp" />
+
+        <TextView
+            android:id="@+id/progressTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Backing up"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/lb_text_primary" />
+
+        <View android:layout_width="match_parent" android:layout_height="40dp" />
+
+        <FrameLayout
+            android:layout_width="160dp"
+            android:layout_height="160dp"
+            android:layout_gravity="center_horizontal">
+
+            <ProgressBar
+                android:id="@+id/progressCircle"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:indeterminate="false"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/circular_progress" />
+
+            <TextView
+                android:id="@+id/progressPercent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="0%"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/lb_text_primary" />
+        </FrameLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="28dp" />
+
+        <TextView
+            android:id="@+id/progressCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 / 0"
+            android:textSize="16sp"
+            android:textColor="@color/lb_text_primary" />
+
+        <TextView
+            android:id="@+id/progressRemaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Remaining: —"
+            android:textSize="14sp"
+            android:textColor="@color/lb_text_secondary" />
+
+        <TextView
+            android:id="@+id/progressEta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Estimated time: —"
+            android:textSize="14sp"
+            android:textColor="@color/lb_text_secondary" />
+
+        <TextView
+            android:id="@+id/progressStage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text=""
+            android:textSize="13sp"
+            android:maxLines="2"
+            android:ellipsize="middle"
+            android:textColor="@color/lb_text_secondary" />
+
+        <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/progressResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text=""
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/lb_text_primary"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/progressDoneBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            android:text="Done"
+            android:visibility="gone"
+            style="@style/Widget.Material3.Button" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/bugReportBtn"
         android:layout_width="wrap_content"
@@ -321,7 +431,6 @@
         android:clickable="true"
         android:focusable="true" />
 
-    <!-- Fixed TOP watermark: only "Ashraf creation" (no AFC). Never moves. -->
     <TextView
         android:id="@+id/watermarkText"
         android:layout_width="wrap_content"
