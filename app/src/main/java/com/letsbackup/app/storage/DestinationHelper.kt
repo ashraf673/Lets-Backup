@@ -32,7 +32,12 @@ object DestinationHelper {
     }
 
     fun createBackupFileName(): String {
+        return createBackupBaseName() + ".lb.zip"
+    }
+
+    /** Base name without extension — used for multi-volume part001/part002 naming. */
+    fun createBackupBaseName(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault())
-        return "LetsBackup_${sdf.format(Date())}.lb.zip"
+        return "LetsBackup_${sdf.format(Date())}"
     }
 }
